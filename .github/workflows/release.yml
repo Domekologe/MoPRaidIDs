@@ -1,0 +1,45 @@
+name: Build & Release Addon
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version from TOC
+        id: version
+        run: |
+          VERSION=$(grep "^## Version:" MoPRaidIDs.toc | sed 's/## Version: //')
+          if [ -z "$VERSION" ]; then
+            echo "❌ Version not found in MoPRaidIDs.toc"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Prepare addon folder
+        run: |
+          mkdir MoPRaidIDs
+          cp MoPRaidIDs.toc MoPRaidIDs.lua MoPRaidIDs/
+          cp -r libs locales MoPRaidIDs/
+
+      - name: Create ZIP
+        run: |
+          ZIP="MoPRaidIDs-${{ steps.version.outputs.version }}.zip"
+          zip -r "$ZIP" MoPRaidIDs
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: MoPRaidIDs-*.zip

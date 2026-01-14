@@ -1,8 +1,8 @@
-## Interface: 50501,50502
+## Interface: 50503
 ## Title: MoP Raid ID Tracker
 ## Notes: Minimap tooltip that shows weekly MoP Raid IDs across your characters.
 ## Author: Domekologe
-## Version: 1.1.4
+## Version: 1.1.5
 ## SavedVariables: MoPRIDDB
 
 Embeds.xml
