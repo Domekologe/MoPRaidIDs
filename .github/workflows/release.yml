@@ -1,4 +1,4 @@
-name: Build & Release Addon
+name: Build & Release WoW Addon
 
 on:
   push:
@@ -16,30 +16,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read version from TOC
-        id: version
+      - name: Detect addon and version
+        id: meta
         run: |
-          VERSION=$(grep "^## Version:" MoPRaidIDs.toc | sed 's/## Version: //')
-          if [ -z "$VERSION" ]; then
-            echo "❌ Version not found in MoPRaidIDs.toc"
+          TOC_FILE=$(ls *.toc | head -n 1)
+          if [ -z "$TOC_FILE" ]; then
+            echo "❌ No .toc file found"
             exit 1
           fi
+
+          ADDON_NAME="${TOC_FILE%.toc}"
+          VERSION=$(grep "^## Version:" "$TOC_FILE" | sed 's/## Version: //')
+
+          if [ -z "$VERSION" ]; then
+            echo "❌ Version not found in $TOC_FILE"
+            exit 1
+          fi
+
+          echo "addon=$ADDON_NAME" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Prepare addon folder
+      - name: Prepare addon folder (exclude-based)
         run: |
-          mkdir MoPRaidIDs
-          cp MoPRaidIDs.toc MoPRaidIDs.lua MoPRaidIDs/
-          cp -r libs locales MoPRaidIDs/
+          mkdir "${{ steps.meta.outputs.addon }}"
 
-      - name: Create ZIP
-        run: |
-          ZIP="MoPRaidIDs-${{ steps.version.outputs.version }}.zip"
-          zip -r "$ZIP" MoPRaidIDs
+          rsync -av \
+            --exclude='.git*' \
+            --exclude='.github' \
+            --exclude='README*' \
+            --exclude='LICENSE*' \
+            --exclude='*.md' \
+            --exclude='screenshots' \
+            --exclude='*.zip' \
+            ./ "${{ steps.meta.outputs.addon }}/"
 
       - name: Create or update release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: Release ${{ steps.version.outputs.version }}
-          files: MoPRaidIDs-*.zip
+          tag_name: ${{ steps.meta.outputs.version }}
+          name: Release ${{ steps.meta.outputs.version }}
+          files: "*.zip"
